@@ -1,0 +1,78 @@
+
+name: Daily Kids Video Planner
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 7 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  create-video-plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Create daily episode plan
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          topics = [
+              ("Der kleine Dino und die Farben",
+               "Farben lernen"),
+              ("Feuerwehr Fino rettet die Tiere",
+               "Helfen und Zusammenarbeiten"),
+              ("Die fünf lustigen Entchen",
+               "Zählen und Musik"),
+              ("Der magische Regenbogenbus",
+               "Fantasie und Entdecken"),
+              ("Baby-Dino lernt zu teilen",
+               "Freundschaft"),
+              ("Die Tierparty im Zauberwald",
+               "Tanzen und Bewegung"),
+              ("Der kleine Bagger baut einen Spielplatz",
+               "Probleme lösen"),
+          ]
+
+          today = datetime.now(timezone.utc).date()
+          title, lesson = topics[today.toordinal() % len(topics)]
+
+          plan = f"""# Kinderfilm-Plan: {today}
+
+          Titel: {title}
+          Lernziel: {lesson}
+          Sprache: Deutsch
+          Zielgruppe: 3 bis 6 Jahre
+          Videolänge: 5 bis 7 Minuten
+          Format: 16:9, 1920x1080
+
+          Produktionsstruktur:
+          1. Begrüßung und Vorstellung der Figuren
+          2. Ein kleines Problem entsteht
+          3. Drei lustige Abenteuer
+          4. Gemeinsame Lösung
+          5. Fröhlicher Abschluss
+
+          Status: Themenplanung erstellt.
+          KI-Drehbuch, Animation, Stimmen,
+          Videoschnitt und Upload sind
+          noch nicht angeschlossen.
+          """
+
+          Path("episode-plan.md").write_text(
+              plan, encoding="utf-8"
+          )
+          print(plan)
+          PY
+
+      - name: Save episode plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: episode-plan
+          path: episode-plan.md
+          retention-days: 7
