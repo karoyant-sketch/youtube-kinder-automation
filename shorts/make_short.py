@@ -9,6 +9,7 @@
 Usage: python make_short.py <clip.mp4> <clip.json> <out.mp4> [narration.mp3] [hook text]
 """
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -73,6 +74,18 @@ for x in range(0, W - cw + 1, 8):
         best_x, best_cost = x, cost
 print(f"facecams={facecams} crop_x={best_x}")
 
+# optional camera pan: PAN="t:center_frac,t:center_frac,..." (e.g. "0:0.5,9:0.85,20:0.5")
+# keeps the action in frame when it happens off-center; linear interpolation between keys
+crop_x = str(best_x)
+pan = os.environ.get("PAN")
+if pan:
+    keys = [(float(a), float(b)) for a, b in (k.split(":") for k in pan.split(","))]
+    xs = [(t, min(max(int(f * W - cw / 2), 0), W - cw)) for t, f in keys]
+    expr = str(xs[-1][1])
+    for (t0, x0), (t1, x1) in reversed(list(zip(xs, xs[1:]))):
+        expr = f"if(lt(t\\,{t1})\\,{x0}+({x1}-{x0})*(t-{t0})/{t1 - t0}\\,{expr})"
+    crop_x = f"if(lt(t\\,{xs[0][0]})\\,{xs[0][1]}\\,{expr})"
+
 blur = ""
 for i, (fx, fy, fw, fh) in enumerate(facecams):
     fw, fh = min(fw, W - fx) // 2 * 2, min(fh, H - fy) // 2 * 2
@@ -135,7 +148,7 @@ ass = work / "subs.ass"
 ass.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 # --- 4. render ----------------------------------------------------------------
-vf = (f"[0:v]null[v0];{blur}[{last}]crop={cw}:{crop_h}:{best_x}:0,scale=1080:1920,"
+vf = (f"[0:v]null[v0];{blur}[{last}]crop={cw}:{crop_h}:'{crop_x}':0,scale=1080:1920,"
       f"subtitles={ass.as_posix()},format=yuv420p[v]")
 if narration:
     af = ("[1:a]volume=0.9[g];[2:a]volume=1.6,apad,asplit[n1][n2];"
