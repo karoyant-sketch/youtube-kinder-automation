@@ -22,6 +22,12 @@ ROOT = pathlib.Path(__file__).parent
 POSTED = ROOT / "posted.json"
 OUT = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else "work/clip.json")
 
+# keep the channel advertiser-friendly: skip sexual/NSFW clips
+BLOCKLIST = re.compile(
+    r"strip|gyat|horny|thirst|booty|twerk|lap ?dance|private dance|nsfw|nude|naked|sex|boob|hooker|onlyfans|18\+",
+    re.I,
+)
+
 PERMISSION_PATTERNS = [
     r"feel free to (use|clip|repost|share)",
     r"(use|repost|reupload|share) my clips",
@@ -58,7 +64,8 @@ def main() -> None:
 
     posted = set(json.loads(POSTED.read_text())) if POSTED.exists() else set()
     clips = [c for c in clips
-             if c["language"].startswith("en") and 12 <= c["duration"] <= 60 and c["id"] not in posted]
+             if c["language"].startswith("en") and 12 <= c["duration"] <= 60 and c["id"] not in posted
+             and not BLOCKLIST.search(c["title"])]
     if not clips:
         sys.exit("No matching clips found")
 

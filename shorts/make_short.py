@@ -45,7 +45,7 @@ if chunk:
 hook = esc(meta["title"]).upper()
 if len(hook) > 42:
     hook = hook[:40].rsplit(" ", 1)[0] + "…"
-credit = f"🎥 twitch.tv/{meta['broadcaster_name']}"
+credit = f"twitch.tv/{meta['broadcaster_name']}"
 dur = float(meta["duration"])
 
 lines = [
