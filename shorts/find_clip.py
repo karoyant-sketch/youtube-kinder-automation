@@ -79,6 +79,9 @@ def main() -> None:
         c["broadcaster_description"] = desc.get(c["broadcaster_id"], "")
 
     clips.sort(key=lambda c: (c["permission"], c["view_count"]), reverse=True)
+    forced = os.environ.get("CLIP_ID")
+    if forced:
+        clips.sort(key=lambda c: c["id"] != forced)
     best = clips[0]
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps({"best": best, "candidates": clips[:10]}, indent=2))
