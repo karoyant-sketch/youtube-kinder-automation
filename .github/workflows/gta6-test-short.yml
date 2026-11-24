@@ -27,7 +27,7 @@ jobs:
       - name: Install tools
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
-          pip install -q requests faster-whisper yt-dlp
+          pip install -q requests faster-whisper yt-dlp demucs soundfile opencv-python-headless
 
       - name: Find best GTA VI clip (official Twitch API)
         run: python shorts/find_clip.py work/clip.json
@@ -45,6 +45,7 @@ jobs:
           mkdir -p output
           cp work/short.mp4 output/test_short.mp4
           cp work/clip.json output/test_clip.json
+          cp work/clip.mp4 output/raw_clip.mp4
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add output
