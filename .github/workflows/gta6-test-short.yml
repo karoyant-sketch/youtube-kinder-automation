@@ -1,0 +1,51 @@
+name: GTA6 Test Short
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ccr-83fa6068-k6d9nc]
+    paths: ["shorts/*.py", ".github/workflows/gta6-test-short.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  make-short:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TWITCH_CLIENT_ID: 2jxz7e0w48xkn6wjguxfrm9hsf28hb
+      TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+          pip install -q requests faster-whisper yt-dlp
+
+      - name: Find best GTA VI clip (official Twitch API)
+        run: python shorts/find_clip.py work/clip.json
+
+      - name: Download clip
+        run: |
+          URL=$(python -c "import json;print(json.load(open('work/clip.json'))['best']['url'])")
+          yt-dlp -q -f "best[ext=mp4]/best" -o work/clip.mp4 "$URL"
+
+      - name: Edit into 9:16 Short
+        run: python shorts/make_short.py work/clip.mp4 work/clip.json work/short.mp4
+
+      - name: Save result to branch
+        run: |
+          mkdir -p output
+          cp work/short.mp4 output/test_short.mp4
+          cp work/clip.json output/test_clip.json
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add output
+          git commit -m "Test short output [skip ci]"
+          git push
