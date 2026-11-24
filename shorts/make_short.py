@@ -14,6 +14,7 @@ import subprocess
 import sys
 
 import cv2
+import numpy as np
 from faster_whisper import WhisperModel
 
 src, meta_path, out = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -60,7 +61,9 @@ for b in hits:
         facecams.append((max(0, int(b[0] - b[2])), max(0, int(b[1] - b[3])), int(b[2] * 3), int(b[3] * 3)))
 facecams = list({(round(f[0], -1), round(f[1], -1)): f for f in facecams}.values())
 
-cw = int(H * 9 / 16) // 2 * 2
+# cut off the bottom 18%: streamers often show live captions/alerts there
+crop_h = int(H * 0.82) // 2 * 2
+cw = int(crop_h * 9 / 16) // 2 * 2
 center = (W - cw) // 2
 best_x, best_cost = center, None
 for x in range(0, W - cw + 1, 8):
@@ -92,7 +95,10 @@ dur = float(meta["duration"])
 events = []
 if narration:
     model = WhisperModel("small", device="cpu", compute_type="int8")
-    segs, _ = model.transcribe(narration, language="en", word_timestamps=True)
+    pcm = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", narration, "-f", "s16le", "-ac", "1",
+                          "-ar", "16000", "-"], check=True, capture_output=True).stdout
+    audio = np.frombuffer(pcm, np.int16).astype(np.float32) / 32768.0
+    segs, _ = model.transcribe(audio, language="en", word_timestamps=True)
     words = [w for s in segs for w in (s.words or [])]
     chunk = []
     for w in words:
@@ -129,7 +135,7 @@ ass = work / "subs.ass"
 ass.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 # --- 4. render ----------------------------------------------------------------
-vf = (f"[0:v]null[v0];{blur}[{last}]crop={cw}:{H}:{best_x}:0,scale=1080:1920,"
+vf = (f"[0:v]null[v0];{blur}[{last}]crop={cw}:{crop_h}:{best_x}:0,scale=1080:1920,"
       f"subtitles={ass.as_posix()},format=yuv420p[v]")
 if narration:
     af = ("[1:a]volume=0.9[g];[2:a]volume=1.6,apad,asplit[n1][n2];"
