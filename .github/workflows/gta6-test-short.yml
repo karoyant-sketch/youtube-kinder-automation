@@ -16,7 +16,7 @@ jobs:
     env:
       TWITCH_CLIENT_ID: 2jxz7e0w48xkn6wjguxfrm9hsf28hb
       TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
-      CLIP_ID: PatientSweetMilkArgieB8-usdfKujw8E2OZHUm
+      CLIP_ID: ${{ vars.CLIP_ID }}
     steps:
       - uses: actions/checkout@v4
 

@@ -84,7 +84,7 @@ def main() -> None:
         clips.sort(key=lambda c: c["id"] != forced)
     best = clips[0]
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps({"best": best, "candidates": clips[:10]}, indent=2))
+    OUT.write_text(json.dumps({"best": best, "candidates": clips[:40]}, indent=2))
     print(f"Picked: {best['broadcaster_name']} | {best['title']} | {best['view_count']} views | "
           f"permission={best['permission']} | {best['url']}")
 
