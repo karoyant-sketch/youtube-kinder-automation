@@ -1,5 +1,7 @@
 """Send a phone notification to the owner — only when action is needed.
 
+ntfy (simplest): secret NTFY_TOPIC — install the ntfy app and subscribe to that topic.
+
 Telegram (preferred): secret TELEGRAM_BOT_TOKEN, optional TELEGRAM_CHAT_ID.
   Without a chat id, the chat of whoever last wrote to the bot is used (send /start once).
 WhatsApp via CallMeBot (fallback): secrets WHATSAPP_PHONE, CALLMEBOT_APIKEY.
@@ -41,8 +43,18 @@ def _whatsapp(text: str) -> bool:
     return r.ok and "error" not in r.text.lower()
 
 
+def _ntfy(text: str) -> bool:
+    topic = os.environ.get("NTFY_TOPIC")
+    if not topic:
+        return False
+    r = requests.post(f"https://ntfy.sh/{topic}", data=text.encode("utf-8"),
+                      headers={"Title": "Open World Chaos", "Priority": "high"}, timeout=30)
+    print("ntfy sent" if r.ok else f"ntfy failed: {r.status_code}")
+    return r.ok
+
+
 def notify(text: str) -> bool:
-    if _telegram(text) or _whatsapp(text):
+    if _ntfy(text) or _telegram(text) or _whatsapp(text):
         return True
     print("No notification channel configured, message was:\n" + text)
     return False
