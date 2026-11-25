@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
+      WA_TOKEN: ${{ secrets.WA_TOKEN }}
+      WA_PHONE_ID: ${{ secrets.WA_PHONE_ID }}
       SEVEN_API_KEY: ${{ secrets.SEVEN_API_KEY }}
       SMS_PHONE: ${{ secrets.SMS_PHONE }}
       NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
