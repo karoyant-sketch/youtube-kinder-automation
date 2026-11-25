@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [ccr-83fa6068-k6d9nc]
-    paths: [".github/workflows/notify-test.yml"]
+    paths: [".github/workflows/notify-test.yml", "state/notify_msg.txt"]
 
 jobs:
   ping:
@@ -22,6 +22,6 @@ jobs:
       CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
     steps:
       - uses: actions/checkout@v4
-      - run: pip install -q requests && python shorts/notify.py
+      - run: pip install -q requests && python shorts/notify.py "$(cat state/notify_msg.txt 2>/dev/null)"
 # test 2026-11-25T22:50:20
 # test 2026-11-25T22:51:19

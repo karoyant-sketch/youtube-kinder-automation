@@ -1,0 +1,48 @@
+name: Daily GTA6 Short
+
+on:
+  schedule:
+    - cron: "0 17 * * *"   # 18:00 Germany (winter time)
+    - cron: "0 22 * * *"   # 23:00 Germany = 17:00 US East
+  workflow_dispatch:
+  push:
+    branches: [ccr-83fa6068-k6d9nc]
+    paths: ["shorts/pipeline.py", "config/sources.json", ".github/workflows/daily-gta6.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-gta6
+  cancel-in-progress: false
+
+jobs:
+  short:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TWITCH_CLIENT_ID: 2jxz7e0w48xkn6wjguxfrm9hsf28hb
+      TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      POSTEY_MCP_KEY: ${{ secrets.POSTEY_MCP_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+          pip install -q requests faster-whisper yt-dlp demucs soundfile "opencv-python-headless<5"
+      - name: Make and draft a Short
+        run: python shorts/pipeline.py
+      - name: Remember posted clips
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add state/posted.json
+          git diff --cached --quiet || (git commit -m "Update posted clips [skip ci]" && git pull --rebase -q && git push)

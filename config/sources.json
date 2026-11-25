@@ -1,0 +1,18 @@
+{
+  "_doc": "Streamers we are ALLOWED to clip. mode=campaign: keep facecam + original audio (campaign rules). mode=gameplay: gameplay only, streamer voice removed, our AI narration. Only enabled sources are used.",
+  "postey_account_id": 2385,
+  "sources": [
+    {
+      "name": "dasgasd3m",
+      "platform": "kick",
+      "login": "dasgasd3m",
+      "mode": "campaign",
+      "enabled": false,
+      "since": "2026-11-18",
+      "campaign": "dasgasd3m x RUCKUS (Content Rewards) - submit link within 30 min",
+      "submit_url": "https://contentrewards.com/c/campaigns/051002dd-5c46-43d0-a446-43f2957ba3a9",
+      "required_hashtags": ["#dasgasdom3", "#GTA6"],
+      "credit": "Clip: Dasgas Dom - live on kick.com/dasgasd3m"
+    }
+  ]
+}

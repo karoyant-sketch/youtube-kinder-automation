@@ -30,11 +30,16 @@ def run(*cmd):
     subprocess.run(cmd, check=True)
 
 
+CAMPAIGN = os.environ.get("LAYOUT") == "campaign"  # keep facecam + original audio (campaign rules)
+
 # --- 1. remove streamer voice ----------------------------------------------
-run("ffmpeg", "-loglevel", "error", "-y", "-i", src, "-vn", "-ac", "2", "-ar", "44100", str(work / "orig.wav"))
-run(sys.executable, "-m", "demucs", "--two-stems", "vocals", "-n", "htdemucs", "-o", str(work / "sep"),
-    str(work / "orig.wav"))
-game_audio = work / "sep" / "htdemucs" / "orig" / "no_vocals.wav"
+if CAMPAIGN:
+    game_audio = pathlib.Path(src)
+else:
+  run("ffmpeg", "-loglevel", "error", "-y", "-i", src, "-vn", "-ac", "2", "-ar", "44100", str(work / "orig.wav"))
+  run(sys.executable, "-m", "demucs", "--two-stems", "vocals", "-n", "htdemucs", "-o", str(work / "sep"),
+      str(work / "orig.wav"))
+  game_audio = work / "sep" / "htdemucs" / "orig" / "no_vocals.wav"
 
 # --- 2. find facecam & choose crop -------------------------------------------
 cap = cv2.VideoCapture(src)
@@ -106,13 +111,18 @@ def esc(text: str) -> str:
 
 dur = float(meta["duration"])
 events = []
-if narration:
+cap_src = narration or (src if CAMPAIGN else None)
+if cap_src:
+    narration_for_caps = cap_src
     model = WhisperModel("small", device="cpu", compute_type="int8")
-    pcm = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", narration, "-f", "s16le", "-ac", "1",
+    pcm = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", narration_for_caps, "-f", "s16le", "-ac", "1",
                           "-ar", "16000", "-"], check=True, capture_output=True).stdout
     audio = np.frombuffer(pcm, np.int16).astype(np.float32) / 32768.0
     segs, _ = model.transcribe(audio, language="en", word_timestamps=True)
-    words = [w for s in segs for w in (s.words or [])]
+    try:
+        words = [w for s in segs for w in (s.words or [])]
+    except (IndexError, ValueError):  # no speech in the audio
+        words = []
     chunk = []
     for w in words:
         chunk.append(w)
@@ -137,7 +147,7 @@ lines = [
     "", "[Events]",
     "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
     f"Dialogue: 1,{ts(0)},{ts(dur)},Hook,,0,0,0,,{{\\fad(200,0)}}{hook}",
-    f"Dialogue: 1,{ts(0)},{ts(dur)},Credit,,0,0,0,,Gameplay: twitch.tv/{esc(meta['broadcaster_name'])}",
+    f"Dialogue: 1,{ts(0)},{ts(dur)},Credit,,0,0,0,,{esc(meta.get('credit') or 'Gameplay: twitch.tv/' + meta['broadcaster_name'])}",
 ]
 for ch in events:
     start, end = ch[0].start, max(ch[-1].end, ch[0].start + 0.35)
@@ -148,17 +158,32 @@ ass = work / "subs.ass"
 ass.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 # --- 4. render ----------------------------------------------------------------
-vf = (f"[0:v]null[v0];{blur}[{last}]crop={cw}:{crop_h}:'{crop_x}':0,scale=1080:1920,"
-      f"subtitles={ass.as_posix()},format=yuv420p[v]")
+if CAMPAIGN and facecams:
+    # campaign layout: streamer facecam on top, gameplay below, original audio
+    fx, fy, fw, fh = max(facecams, key=lambda f: f[2] * f[3])
+    fh = min(fh, H - fy) // 2 * 2
+    fw = min(max(fw, int(fh * 1080 / 608)), W - fx) // 2 * 2
+    gh = H // 2 * 2
+    gw = int(gh * 1080 / 1312) // 2 * 2
+    gx = (W - gw) // 2
+    vf = (f"[0:v]split[a][b];[a]crop={fw}:{fh}:{fx}:{fy},scale=1080:608:force_original_aspect_ratio=increase,"
+          f"crop=1080:608[top];[b]crop={gw}:{gh}:{gx}:0,scale=1080:1312[bot];[top][bot]vstack,"
+          f"subtitles={ass.as_posix()},format=yuv420p[v]")
+elif CAMPAIGN:
+    vf = (f"[0:v]crop={int(H * 9 / 16) // 2 * 2}:{H}:{(W - int(H * 9 / 16)) // 2}:0,scale=1080:1920,"
+          f"subtitles={ass.as_posix()},format=yuv420p[v]")
+else:
+    vf = (f"[0:v]null[v0];{blur}[{last}]crop={cw}:{crop_h}:'{crop_x}':0,scale=1080:1920,"
+          f"subtitles={ass.as_posix()},format=yuv420p[v]")
 if narration:
     af = ("[1:a]volume=0.9[g];[2:a]volume=1.6,apad,asplit[n1][n2];"
           "[g][n1]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=400[duck];"
           "[duck][n2]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11[a]")
     inputs = ["-i", src, "-i", str(game_audio), "-i", narration]
 else:
-    af = "[1:a]loudnorm=I=-14:TP=-1.5:LRA=11[a]"
+    af = "[1:a]loudnorm=I=-14:TP=-1.5:LRA=11[a]"  # campaign: [1:a] is the original clip audio
     inputs = ["-i", src, "-i", str(game_audio)]
 run("ffmpeg", "-loglevel", "error", "-y", *inputs, "-filter_complex", vf + ";" + af,
     "-map", "[v]", "-map", "[a]", "-t", str(min(dur, 59)), "-r", "30", "-c:v", "libx264", "-preset", "medium",
-    "-crf", "20", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", out)
+    "-crf", "23", "-maxrate", "4M", "-bufsize", "8M", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", out)
 print("Done:", out)
