@@ -1,5 +1,6 @@
 """Send a phone notification to the owner — only when action is needed.
 
+SMS via seven.io: secrets SEVEN_API_KEY, SMS_PHONE (+49...).
 ntfy (simplest): secret NTFY_TOPIC — install the ntfy app and subscribe to that topic.
 
 Telegram (preferred): secret TELEGRAM_BOT_TOKEN, optional TELEGRAM_CHAT_ID.
@@ -53,8 +54,19 @@ def _ntfy(text: str) -> bool:
     return r.ok
 
 
+def _sms(text: str) -> bool:
+    key, phone = os.environ.get("SEVEN_API_KEY"), os.environ.get("SMS_PHONE")
+    if not key or not phone:
+        return False
+    r = requests.post("https://gateway.seven.io/api/sms", headers={"X-Api-Key": key},
+                      data={"to": phone, "text": text[:450], "from": "OWC"}, timeout=30)
+    ok = r.ok and r.text.strip().startswith(("100", "{"))
+    print("SMS sent" if ok else f"SMS failed: {r.status_code} {r.text[:80]}")
+    return ok
+
+
 def notify(text: str) -> bool:
-    if _ntfy(text) or _telegram(text) or _whatsapp(text):
+    if _sms(text) or _ntfy(text) or _telegram(text) or _whatsapp(text):
         return True
     print("No notification channel configured, message was:\n" + text)
     return False
