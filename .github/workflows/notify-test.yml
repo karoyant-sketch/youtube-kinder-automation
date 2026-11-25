@@ -1,16 +1,18 @@
-name: WhatsApp Test
+name: Notify Test
 
 on:
   workflow_dispatch:
   push:
     branches: [ccr-83fa6068-k6d9nc]
-    paths: [".github/workflows/whatsapp-test.yml"]
+    paths: [".github/workflows/notify-test.yml"]
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}
       CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
     steps:
