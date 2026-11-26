@@ -12,7 +12,9 @@ key = os.environ.get("ELEVENLABS_API_KEY")
 if not key:
     notify("❌ ElevenLabs-Test: Secret ELEVENLABS_API_KEY fehlt noch auf GitHub.")
     sys.exit(1)
+key = key.strip()
 h = {"xi-api-key": key}
+print("key length", len(key), "prefix", key[:3])
 sub = requests.get("https://api.elevenlabs.io/v1/user/subscription", headers=h, timeout=30)
 if sub.ok:
     s = sub.json()
@@ -23,7 +25,8 @@ else:
     if v.status_code in (200, 404):
         msg = "✅ ElevenLabs-Schlüssel gültig (Guthaben nicht lesbar – Schlüssel hat keine 'User'-Leserechte, ist ok)."
     else:
-        msg = f"❌ ElevenLabs-Schlüssel abgelehnt ({sub.status_code}/{v.status_code}). Bitte neuen Schlüssel mit 'Text to Speech'-Recht anlegen."
+        print("detail:", sub.text[:300], "|", v.text[:300])
+        msg = f"❌ ElevenLabs-Schlüssel abgelehnt ({sub.status_code}/{v.status_code}): {v.text[:150]}. Bitte neuen Schlüssel mit 'Text to Speech'-Recht anlegen."
 print(msg)
 notify(msg)
 sys.exit(0 if msg.startswith("✅") else 1)
