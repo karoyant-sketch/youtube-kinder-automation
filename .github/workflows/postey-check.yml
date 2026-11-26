@@ -1,0 +1,19 @@
+name: Postey Check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ccr-83fa6068-k6d9nc]
+    paths: ["shorts/postey_check.py", ".github/workflows/postey-check.yml"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      POSTEY_MCP_KEY: ${{ secrets.POSTEY_MCP_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q requests && python shorts/postey_check.py
