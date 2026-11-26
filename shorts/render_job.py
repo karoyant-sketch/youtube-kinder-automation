@@ -22,7 +22,7 @@ job = json.loads((P.ROOT / "state/job.json").read_text())
 if job.get("done"):
     sys.exit("job already done")
 src = next(s for s in P.CFG["sources"] if s["name"] == job["source"])
-if not src.get("enabled"):
+if not src.get("enabled") and not job.get("test"):
     P.fail(f"Quelle {src['name']} ist nicht freigegeben – nichts gepostet.")
 if job["clip_id"] in P.POSTED:
     sys.exit("already posted")
@@ -65,9 +65,17 @@ if src.get("credit"):
 if src.get("required_hashtags"):
     desc += "\n" + " ".join(src["required_hashtags"])
 p = P.Postey(key)
-up = p.call("upload_media", {"request": {"platform": "YOUTUBE", "source_type": "base64", "filename": "short.mp4",
-                                         "file_base64": base64.b64encode(out.read_bytes()).decode()}})
-cdn = up.get("cdn_url") or (up.get("cdn_urls") or [None])[0]
+# Postey REST upload (same endpoint the official Postey CLI uses; MCP base64 is too small for video)
+with open(out, "rb") as f:
+    r = requests.post("https://srvr.postey.ai/v1/media/unlinked", headers={"X-API-Key": key},
+                      files={"file": ("short.mp4", f, "video/mp4")}, data={"platform": "youtube"}, timeout=600)
+print("upload", r.status_code, r.text[:300])
+r.raise_for_status()
+up = r.json()
+up = up.get("data", up)
+cdn = up.get("cdn_url") or up.get("url") or (up.get("cdn_urls") or [None])[0]
+if not cdn:
+    P.fail(f"Postey-Upload ohne URL: {str(up)[:200]}")
 post = p.call("create_post", {"request": {
     "account_id": P.CFG["postey_account_id"], "platform": "YOUTUBE", "title": f"OWC {job['clip_id']}"[:50],
     "idempotency_key": f"owc-{job['clip_id']}",
@@ -78,7 +86,7 @@ P.POSTED.append(job["clip_id"])
 P.POSTED_F.write_text(json.dumps(P.POSTED, indent=1))
 job["done"] = True
 (P.ROOT / "state/job.json").write_text(json.dumps(job, indent=1))
-msg = (f"🎬 Neues Short als Entwurf in Postey (Post {post.get('post_id') or post.get('id')}):\n{job['youtube_title']}\n"
+msg = ("🧪 TEST – NICHT veröffentlichen, nur ansehen & dann löschen!\n" if job.get("test") else "") + (f"🎬 Neues Short als Entwurf in Postey (Post {post.get('post_id') or post.get('id')}):\n{job['youtube_title']}\n"
        f"👉 In der Postey-App prüfen und veröffentlichen.")
 if src["mode"] == "campaign" and src.get("submit_url"):
     msg += f"\n💰 Danach den YouTube-Link INNERHALB VON 30 MIN einreichen: {src['submit_url']}"
