@@ -1,0 +1,42 @@
+name: GTA6 Render Job
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ccr-83fa6068-k6d9nc, main]
+    paths: ["state/job.json"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gta6-render
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TWITCH_CLIENT_ID: 2jxz7e0w48xkn6wjguxfrm9hsf28hb
+      TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      POSTEY_MCP_KEY: ${{ secrets.POSTEY_MCP_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+          pip install -q requests faster-whisper yt-dlp demucs soundfile "opencv-python-headless<5"
+      - run: python shorts/render_job.py
+      - name: Save results
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A state/posted.json state/job.json || true
+          git diff --cached --quiet || (git commit -m "GTA6 Render Job results [skip ci]" && git pull --rebase -q && git push)
