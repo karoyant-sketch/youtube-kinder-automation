@@ -1,0 +1,19 @@
+name: ElevenLabs Check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ccr-83fa6068-k6d9nc]
+    paths: ["shorts/elevenlabs_check.py", ".github/workflows/elevenlabs-check.yml"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q requests && python shorts/elevenlabs_check.py
