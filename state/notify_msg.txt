@@ -1,8 +1,7 @@
-📋 Open World Chaos – das brauche ich noch von dir:
+✅ Täglicher Claude-Job "GTA6 Daily Short" ist eingerichtet: jeden Tag 22:43 Uhr. Er läuft über dein Claude-Abo, ohne Anthropic-API.
 
-1) Postey-Schlüssel: https://app.postey.ai?settings=agents&section=advanced → "New MCP key" (Rechte: Posts erstellen + Medien hochladen). Als GitHub-Secret POSTEY_MCP_KEY eintragen.
-2) Anthropic-Schlüssel: console.anthropic.com → API Keys. Secret: ANTHROPIC_API_KEY
-3) ElevenLabs-Schlüssel: elevenlabs.io → API Keys. Secret: ELEVENLABS_API_KEY
-   Secrets eintragen: https://github.com/karoyant-sketch/youtube-kinder-automation/settings/secrets/actions/new
-4) contentrewards.com: anmelden, YouTube "Open World Chaos" verbinden, Kampagne "dasgasd3m x RUCKUS" beitreten.
-5) Im Claude-Chat "Go" schreiben, damit es täglich 18:00 + 23:00 automatisch läuft.
+Damit er wirklich Shorts macht, brauche ich noch:
+1) contentrewards.com: Kanal "Open World Chaos" verbinden + Kampagne "dasgasd3m x RUCKUS" beitreten → danach Claude im Chat Bescheid sagen.
+2) Postey-Schlüssel: https://app.postey.ai?settings=agents&section=advanced → "New MCP key" → GitHub-Secret POSTEY_MCP_KEY
+3) ElevenLabs-Schlüssel (für Kommentar-Videos): elevenlabs.io → API Keys → GitHub-Secret ELEVENLABS_API_KEY
+Secrets eintragen: https://github.com/karoyant-sketch/youtube-kinder-automation/settings/secrets/actions/new
