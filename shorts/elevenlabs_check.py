@@ -14,7 +14,6 @@ if not key:
     sys.exit(1)
 key = key.strip()
 h = {"xi-api-key": key}
-print("key length", len(key), "prefix", key[:3])
 sub = requests.get("https://api.elevenlabs.io/v1/user/subscription", headers=h, timeout=30)
 if sub.ok:
     s = sub.json()
