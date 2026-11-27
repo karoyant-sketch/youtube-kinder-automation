@@ -3,7 +3,7 @@ name: Notify Test
 on:
   workflow_dispatch:
   push:
-    branches: [ccr-83fa6068-k6d9nc]
+    branches: ['**']
     paths: [".github/workflows/notify-test.yml", "state/notify_msg.txt"]
 
 jobs:

@@ -3,7 +3,7 @@ name: GTA6 Render Job
 on:
   workflow_dispatch:
   push:
-    branches: [ccr-83fa6068-k6d9nc, main]
+    branches: ['**']
     paths: ["state/job.json"]
 
 permissions:
@@ -40,3 +40,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A state/posted.json state/job.json || true
           git diff --cached --quiet || (git commit -m "GTA6 Render Job results [skip ci]" && git pull --rebase -q && git push)
+          # keep the list of posted clips on the main working branch too (daily sessions start from it)
+          if [ "$GITHUB_REF_NAME" != "ccr-83fa6068-k6d9nc" ]; then cp state/posted.json /tmp/posted.json && git fetch -q origin ccr-83fa6068-k6d9nc && git checkout -q ccr-83fa6068-k6d9nc && cp /tmp/posted.json state/posted.json && git add state/posted.json && (git diff --cached --quiet || (git commit -m "Sync posted clips [skip ci]" && git push origin ccr-83fa6068-k6d9nc)); fi

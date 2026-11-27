@@ -3,7 +3,7 @@ name: GTA6 Fetch Candidates
 on:
   workflow_dispatch:
   push:
-    branches: [ccr-83fa6068-k6d9nc, main]
+    branches: ['**']
     paths: ["state/fetch_request.txt"]
 
 permissions:
