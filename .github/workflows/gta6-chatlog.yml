@@ -1,0 +1,37 @@
+name: GTA6 Chat Logger
+
+# Records the live chat of enabled Twitch sources (official anonymous IRC), then restarts itself,
+# so it is always watching. Chat spikes = funniest moments (used by GTA6 Fetch Candidates).
+on:
+  workflow_dispatch:
+  push:
+    branches: ['**']
+    paths: ["shorts/chat_logger.py", ".github/workflows/gta6-chatlog.yml"]
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: gta6-chatlog
+  cancel-in-progress: false
+
+jobs:
+  log:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      TWITCH_CLIENT_ID: 2jxz7e0w48xkn6wjguxfrm9hsf28hb
+      TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+      MAX_MINUTES: "330"
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          pip install -q requests && python shorts/chat_logger.py
+      - name: Restart logger
+        if: (success() || failure()) && hashFiles('state/chatlog_stop') == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run gta6-chatlog.yml --ref "$GITHUB_REF_NAME"

@@ -16,12 +16,21 @@ OUT = P.ROOT / "output/candidates"
 shutil.rmtree(OUT, ignore_errors=True)
 OUT.mkdir(parents=True)
 
-cands = P.pick_clip()  # enabled sources only, not yet posted, NSFW titles filtered, top 5
+# 1st choice: moments where the live chat exploded (needs chat logs from "GTA6 Chat Logger")
+try:
+    cands = P.vod_candidates()
+except Exception as e:  # noqa: BLE001
+    print("vod_candidates failed:", e)
+    cands = []
+if not cands:  # fallback: viewer-made Twitch/Kick clips
+    cands = P.pick_clip()  # enabled sources only, not yet posted, NSFW titles filtered, top 5
 result = []
 for n, (src, clip) in enumerate(cands):
     raw = P.WORK / f"c{n}.mp4"
     try:
-        subprocess.run(["yt-dlp", "-q", "-f", "best[ext=mp4]/best", "-o", str(raw), clip["url"]], check=True, timeout=300)
+        dl = ["--download-sections", f"*{clip['vod_start']}-{clip['vod_end']}"] if "vod_start" in clip else []
+        subprocess.run(["yt-dlp", "-q", *dl, "-f", "best[height<=1080][ext=mp4]/best[height<=1080]/best",
+                        "-o", str(raw), clip["url"]], check=True, timeout=600)
         dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
                                     str(raw)], capture_output=True, text=True).stdout or clip["duration"])
         for i in range(4):

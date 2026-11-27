@@ -28,8 +28,14 @@ if job["clip_id"] in P.POSTED:
     sys.exit("already posted")
 
 raw, cut = P.WORK / "raw.mp4", P.WORK / "cut.mp4"
-subprocess.run(["yt-dlp", "-q", "-f", "best[ext=mp4]/best", "-o", str(raw), job["clip_url"]], check=True)
 start, end = float(job.get("start", 0)), float(job.get("end", 59))
+if "/videos/" in job["clip_url"]:  # VOD moment: download only that part; start/end are VOD seconds
+    subprocess.run(["yt-dlp", "-q", "--download-sections", f"*{start}-{end}",
+                    "-f", "best[height<=1080][ext=mp4]/best[height<=1080]/best", "-o", str(raw), job["clip_url"]],
+                   check=True)
+    start, end = 0.0, end - start
+else:
+    subprocess.run(["yt-dlp", "-q", "-f", "best[ext=mp4]/best", "-o", str(raw), job["clip_url"]], check=True)
 subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-ss", str(start), "-i", str(raw), "-t", str(min(end - start, 59)),
                 "-c:v", "libx264", "-crf", "16", "-c:a", "aac", str(cut)], check=True)
 dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(cut)],

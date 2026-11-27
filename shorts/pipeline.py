@@ -80,6 +80,93 @@ def kick_clips(login):
     return out
 
 
+# ---------------------------------------------------------------- chat-explosion highlights from VODs
+LAUGH = re.compile(r"LUL|KEKW|OMEGALUL|ICANT|LMA+O|LMFAO|\bLO+L\b|HA(HA)+|\bxD\b|Pepega|\U0001F480|\U0001F602|\U0001F923|"
+                   r"\bCLIP\b|clip (it|that)|\bDEAD\b|NAHH+|\bBRO+\b", re.I)
+
+
+def chat_peaks(msgs, vod_start, vod_len, top=3, before=30, after=8):
+    """msgs: [{"t": unix, "m": text}] -> [(start_s, end_s, score, sample)] in VOD seconds.
+
+    Score per 5 s bucket = messages + 3 x laugh-messages, compared with the average of the 2 minutes before
+    (so a busy chat alone does not count, only a sudden explosion). Chat lags the stream by ~5-10 s, so the
+    clip starts `before` seconds before the peak and ends `after` seconds after it."""
+    B = 5
+    n = int(vod_len // B) + 1
+    score, texts = [0.0] * n, [[] for _ in range(n)]
+    for m in msgs:
+        i = int((m["t"] - vod_start) // B)
+        if 0 <= i < n:
+            lau = bool(LAUGH.search(m["m"]))
+            score[i] += 1 + 3 * lau
+            if lau:
+                texts[i].append(m["m"])
+    win = [sum(score[i:i + 3]) for i in range(n)]  # 15 s window
+    spikes = []
+    for i in range(24, n):
+        base = sum(score[i - 24:i]) / 24 * 3 + 6
+        laughs = sum(len(t) for t in texts[i:i + 3])
+        if laughs >= 4:
+            spikes.append((win[i] / base * (1 + laughs / 10), i, laughs))
+    spikes.sort(reverse=True)
+    out = []
+    for sc, i, laughs in spikes:
+        if sc < 3:  # not a real explosion
+            break
+        peak = i * B + 10
+        if any(abs(peak - (o[0] + before)) < 120 for o in out):
+            continue
+        s0 = max(0, peak - before)
+        sample = [t for b in texts[i:i + 3] for t in b][:12]
+        out.append((s0, min(vod_len, peak + after), round(sc, 2), sample))
+        if len(out) >= top:
+            break
+    return out
+
+
+def vod_candidates(max_vods=3):
+    """Chat-explosion moments from saved VODs of enabled Twitch sources that have a chat log."""
+    cid = os.environ["TWITCH_CLIENT_ID"]
+    tok = requests.post("https://id.twitch.tv/oauth2/token", data={
+        "client_id": cid, "client_secret": os.environ["TWITCH_CLIENT_SECRET"],
+        "grant_type": "client_credentials"}, timeout=30).json()["access_token"]
+    h = {"Client-Id": cid, "Authorization": f"Bearer {tok}"}
+    api = "https://api.twitch.tv/helix"
+    cands = []
+    for s in CFG["sources"]:
+        if not (s.get("enabled") and s["platform"] == "twitch"):
+            continue
+        logs = ROOT / "chat" / s["login"].lower()
+        if not logs.exists():
+            print(f"{s['name']}: no chat log yet")
+            continue
+        uid = requests.get(f"{api}/users", params={"login": s["login"]}, headers=h, timeout=30).json()["data"][0]["id"]
+        vods = requests.get(f"{api}/videos", params={"user_id": uid, "type": "archive", "first": 10},
+                            headers=h, timeout=30).json()["data"]
+        used = 0
+        for v in vods:
+            f = logs / f"{v.get('stream_id')}.jsonl"
+            if not f.exists():
+                continue
+            msgs = [json.loads(l) for l in f.read_text(encoding="utf-8").splitlines() if l.strip()]
+            start = dt.datetime.fromisoformat(v["created_at"].replace("Z", "+00:00")).timestamp()
+            dur = v["duration"]  # like 3h1m59s
+            secs = sum(int(x) * {"h": 3600, "m": 60, "s": 1}[u] for x, u in re.findall(r"(\d+)([hms])", dur))
+            for s0, e0, sc, sample in chat_peaks(msgs, start, secs):
+                cid_ = f"v{v['id']}_{int(s0)}"
+                if cid_ in POSTED:
+                    continue
+                cands.append((s, {"id": cid_, "url": f"https://www.twitch.tv/videos/{v['id']}", "vod_start": s0,
+                                  "vod_end": e0, "title": v["title"], "views": sc, "chat_score": sc,
+                                  "chat_sample": sample, "duration": e0 - s0, "created": v["created_at"],
+                                  "streamer": v["user_name"]}))
+            used += 1
+            if used >= max_vods:
+                break
+    cands.sort(key=lambda sc: sc[1]["chat_score"], reverse=True)
+    return cands[:5]
+
+
 def pick_clip():
     sources = [s for s in CFG["sources"] if s.get("enabled")]
     if not sources:
