@@ -56,7 +56,7 @@ def twitch_clips(login):
     api = "https://api.twitch.tv/helix"
     uid = requests.get(f"{api}/users", params={"login": login}, headers=h, timeout=30).json()["data"][0]["id"]
     game = requests.get(f"{api}/games", params={"name": "Grand Theft Auto VI"}, headers=h, timeout=30).json()["data"][0]["id"]
-    since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    since = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
     data = requests.get(f"{api}/clips", params={"broadcaster_id": uid, "started_at": since, "first": 50},
                         headers=h, timeout=30).json()["data"]
     return [{"id": c["id"], "url": c["url"], "title": c["title"], "views": c["view_count"],
