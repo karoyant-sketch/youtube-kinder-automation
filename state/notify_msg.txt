@@ -1,1 +1,1 @@
-Test: Heute keine Shorts.
+✅ Test: TELEGRAM_CHAT_ID ist eingerichtet – Benachrichtigungen kommen jetzt dauerhaft an.
