@@ -22,6 +22,11 @@ try:
 except Exception as e:  # noqa: BLE001
     print("vod_candidates failed:", e)
     cands = []
+if not cands:  # old streams without chat log: loudest sudden reactions in the VOD audio
+    try:
+        cands = P.audio_candidates()
+    except Exception as e:  # noqa: BLE001
+        print("audio_candidates failed:", e)
 if not cands:  # fallback: viewer-made Twitch/Kick clips
     cands = P.pick_clip()  # enabled sources only, not yet posted, NSFW titles filtered, top 5
 result = []

@@ -154,7 +154,7 @@ def vod_candidates(max_vods=3):
             secs = sum(int(x) * {"h": 3600, "m": 60, "s": 1}[u] for x, u in re.findall(r"(\d+)([hms])", dur))
             for s0, e0, sc, sample in chat_peaks(msgs, start, secs):
                 cid_ = f"v{v['id']}_{int(s0)}"
-                if cid_ in POSTED:
+                if cid_ in POSTED or _used_near(v["id"], s0):
                     continue
                 cands.append((s, {"id": cid_, "url": f"https://www.twitch.tv/videos/{v['id']}", "vod_start": s0,
                                   "vod_end": e0, "title": v["title"], "views": sc, "chat_score": sc,
@@ -165,6 +165,69 @@ def vod_candidates(max_vods=3):
                 break
     cands.sort(key=lambda sc: sc[1]["chat_score"], reverse=True)
     return cands[:5]
+
+
+def _used_near(vod_id, start, gap=150):
+    """True if we already posted a moment of this VOD within `gap` seconds."""
+    for pid in POSTED:
+        m = re.fullmatch(r"v(\d+)_(\d+)", pid)
+        if m and m.group(1) == str(vod_id) and abs(int(m.group(2)) - start) < gap:
+            return True
+    return False
+
+
+def audio_candidates(max_vods=2, per_vod=4, before=22, after=10):
+    """Old streams without chat log: find the loudest sudden reactions (screams/laughs) in the VOD audio."""
+    import numpy as np
+    cid = os.environ["TWITCH_CLIENT_ID"]
+    tok = requests.post("https://id.twitch.tv/oauth2/token", data={
+        "client_id": cid, "client_secret": os.environ["TWITCH_CLIENT_SECRET"],
+        "grant_type": "client_credentials"}, timeout=30).json()["access_token"]
+    h = {"Client-Id": cid, "Authorization": f"Bearer {tok}"}
+    api = "https://api.twitch.tv/helix"
+    cands = []
+    for s in CFG["sources"]:
+        if not (s.get("enabled") and s["platform"] == "twitch"):
+            continue
+        uid = requests.get(f"{api}/users", params={"login": s["login"]}, headers=h, timeout=30).json()["data"][0]["id"]
+        vods = requests.get(f"{api}/videos", params={"user_id": uid, "type": "archive", "first": 10},
+                            headers=h, timeout=30).json()["data"]
+        for v in vods[:max_vods]:
+            if s.get("since") and v["created_at"][:10] < s["since"]:
+                continue
+            url = f"https://www.twitch.tv/videos/{v['id']}"
+            aud = WORK / f"a{v['id']}.m4a"
+            try:
+                subprocess.run(["yt-dlp", "-q", "-f", "Audio_Only/bestaudio/worst", "-o", str(aud), url],
+                               check=True, timeout=1500)
+                pcm = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", str(aud), "-ac", "1", "-ar", "4000",
+                                      "-f", "s16le", "-"], capture_output=True, check=True).stdout
+            except Exception as e:  # noqa: BLE001
+                print("audio download failed", v["id"], e)
+                continue
+            a = np.frombuffer(pcm, np.int16).astype(np.float32)
+            sec = len(a) // 4000
+            rms = np.sqrt((a[:sec * 4000].reshape(sec, 4000) ** 2).mean(1) + 1)
+            db = 20 * np.log10(rms)
+            base = np.array([np.median(db[max(0, i - 120):i + 1]) for i in range(sec)])
+            win = np.convolve(db - base, np.ones(4) / 4, mode="same")  # 4 s of sudden loudness
+            order = np.argsort(-win)
+            picked = []
+            for i in order:
+                i = int(i)
+                if win[i] < 6 or len(picked) >= per_vod:
+                    break
+                s0 = max(0, i - before)
+                if any(abs(i - p) < 180 for p in picked) or _used_near(v["id"], s0):
+                    continue
+                picked.append(i)
+                cands.append((s, {"id": f"v{v['id']}_{s0}", "url": url, "vod_start": s0, "vod_end": min(sec, i + after),
+                                  "title": v["title"], "views": round(float(win[i]), 1), "loudness_jump_db":
+                                  round(float(win[i]), 1), "duration": before + after, "created": v["created_at"],
+                                  "streamer": v["user_name"]}))
+            aud.unlink(missing_ok=True)
+    cands.sort(key=lambda sc: sc[1]["views"], reverse=True)
+    return cands[:6]
 
 
 def pick_clip():
