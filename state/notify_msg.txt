@@ -1,7 +1,1 @@
-✅ Täglicher Claude-Job "GTA6 Daily Short" ist eingerichtet: jeden Tag 22:43 Uhr. Er läuft über dein Claude-Abo, ohne Anthropic-API.
-
-Damit er wirklich Shorts macht, brauche ich noch:
-1) contentrewards.com: Kanal "Open World Chaos" verbinden + Kampagne "dasgasd3m x RUCKUS" beitreten → danach Claude im Chat Bescheid sagen.
-2) Postey-Schlüssel: https://app.postey.ai?settings=agents&section=advanced → "New MCP key" → GitHub-Secret POSTEY_MCP_KEY
-3) ElevenLabs-Schlüssel (für Kommentar-Videos): elevenlabs.io → API Keys → GitHub-Secret ELEVENLABS_API_KEY
-Secrets eintragen: https://github.com/karoyant-sketch/youtube-kinder-automation/settings/secrets/actions/new
+Heute kein Short: keine freigegebene Quelle aktiv.
