@@ -1,2 +1,6 @@
 # Local secrets written by `elevenlabs onboard`
 /.env
+
+# Python cache
+__pycache__/
+*.pyc
