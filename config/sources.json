@@ -32,7 +32,13 @@
         "#GTA6"
       ],
       "credit": "Clip: Boeshi - live on twitch.tv/darealboeshi",
-      "note": "Joined 2026-11-27. Public brief: funniest/craziest GTA 6 Twitch moments, drive viewers to twitch.tv/darealboeshi. Reference-file rules not yet seen - campaign mode (facecam+original audio) as safe default."
+      "note": "Joined 2026-11-27. Public brief: funniest/craziest GTA 6 Twitch moments, drive viewers to twitch.tv/darealboeshi. Reference-file rules not yet seen - campaign mode (facecam+original audio) as safe default.",
+      "facecam": [
+        0.005,
+        0.14,
+        0.21,
+        0.265
+      ]
     }
   ]
 }

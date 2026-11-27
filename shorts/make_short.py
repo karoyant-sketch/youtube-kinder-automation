@@ -66,6 +66,10 @@ for b in hits:
         # facecam boxes are usually ~3x the face size
         facecams.append((max(0, int(b[0] - b[2])), max(0, int(b[1] - b[3])), int(b[2] * 3), int(b[3] * 3)))
 facecams = list({(round(f[0], -1), round(f[1], -1)): f for f in facecams}.values())
+# fixed facecam position from config/sources.json ("facecam": [x, y, w, h] as fractions of the frame)
+if os.environ.get("FACECAM"):
+    fx_, fy_, fw_, fh_ = (float(v) for v in os.environ["FACECAM"].split(","))
+    facecams = [(int(fx_ * W), int(fy_ * H), int(fw_ * W), int(fh_ * H))]
 
 # cut off the bottom 18%: streamers often show live captions/alerts there
 crop_h = int(H * 0.82) // 2 * 2

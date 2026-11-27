@@ -42,6 +42,8 @@ meta.write_text(json.dumps({"best": {"title": job["hook"], "duration": dur, "bro
 env, narr = dict(os.environ), ""
 if src["mode"] == "campaign":
     env["LAYOUT"] = "campaign"
+    if src.get("facecam"):
+        env["FACECAM"] = ",".join(str(v) for v in src["facecam"])
 else:
     if job.get("narration_url"):
         narr = str(P.WORK / "narr.mp3")
@@ -78,7 +80,7 @@ if not cdn:
     P.fail(f"Postey-Upload ohne URL: {str(up)[:200]}")
 post = p.call("create_post", {"request": {
     "account_id": P.CFG["postey_account_id"], "platform": "YOUTUBE", "title": f"OWC {job['clip_id']}"[:50],
-    "idempotency_key": f"owc-{job['clip_id']}",
+    "idempotency_key": f"owc-{job['clip_id']}{job.get('rev', '')}",
     "contents": [{"youtube_title": job["youtube_title"][:100], "text": desc, "media_urls": [cdn],
                   "youtube_tags": job.get("tags", ""), "youtube_category_id": "20", "youtube_made_for_kids": False}]}})
 
